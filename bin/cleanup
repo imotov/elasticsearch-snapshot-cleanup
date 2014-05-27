@@ -1,0 +1,119 @@
+#!/bin/sh
+
+SCRIPT="$0"
+
+while [ -h "$SCRIPT" ] ; do
+  ls=`ls -ld "$SCRIPT"`
+  # Drop everything prior to ->
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    SCRIPT="$link"
+  else
+    SCRIPT=`dirname "$SCRIPT"`/"$link"
+  fi
+done
+
+# determine elasticsearch home
+ES_HOME=`dirname "$SCRIPT"`/..
+
+# make ELASTICSEARCH_HOME absolute
+ES_HOME=`cd "$ES_HOME"; pwd`
+
+echo "Setting ES_HOME as $ES_HOME"
+# If an include wasn't specified in the environment, then search for one...
+if [ "x$ES_INCLUDE" = "x" ]; then
+    # Locations (in order) to use when searching for an include file.
+    for include in /usr/share/elasticsearch/elasticsearch.in.sh \
+                   /usr/local/share/elasticsearch/elasticsearch.in.sh \
+                   /opt/elasticsearch/elasticsearch.in.sh \
+                   ~/.elasticsearch.in.sh \
+                   "`dirname "$0"`"/elasticsearch.in.sh; do
+        if [ -r "$include" ]; then
+            . "$include"
+            break
+        fi
+    done
+# ...otherwise, source the specified include.
+elif [ -r "$ES_INCLUDE" ]; then
+    . "$ES_INCLUDE"
+fi
+
+if [ -x "$JAVA_HOME/bin/java" ]; then
+    JAVA="$JAVA_HOME/bin/java"
+else
+    JAVA=`which java`
+fi
+
+if [ ! -x "$JAVA" ]; then
+    echo "Could not find any executable java binary. Please install java in your PATH or set JAVA_HOME"
+    exit 1
+fi
+
+if [ -z "$ES_CLASSPATH" ]; then
+    echo "You must set the ES_CLASSPATH var" >&2
+    exit 1
+fi
+
+# Special-case path variables.
+case `uname` in
+    CYGWIN*)
+        ES_CLASSPATH=`cygpath -p -w "$ES_CLASSPATH"`
+        ES_HOME=`cygpath -p -w "$ES_HOME"`
+    ;;
+esac
+
+# Parse any long getopt options and put them into properties before calling getopt below
+# Be dash compatible to make sure running under ubuntu works
+ARGV=""
+while [ $# -gt 0 ]
+do
+    case $1 in
+      --*=*) properties="$properties -Des.${1#--}"
+           shift 1
+           ;;
+      --*) properties="$properties -Des.${1#--}=$2"
+           shift 2
+           ;;
+      *) ARGV="$ARGV $1" ; shift
+    esac
+done
+
+# Parse any command line options.
+args=`getopt vdhp:D:X: $ARGV`
+eval set -- "$args"
+
+while true; do
+    case $1 in
+        -v)
+            "$JAVA" $JAVA_OPTS $ES_JAVA_OPTS $es_parms -Des.path.home="$ES_HOME" -cp "$ES_CLASSPATH" $properties \
+                    org.elasticsearch.Version
+            exit 0
+        ;;
+        -h)
+            echo "Usage: $0 [-h]"
+            exit 0
+        ;;
+        -D)
+            properties="$properties -D$2"
+            shift 2
+        ;;
+        -X)
+            properties="$properties -X$2"
+            shift 2
+        ;;
+        --)
+            shift
+            break
+        ;;
+        *)
+            echo "Error parsing argument $1!" >&2
+            exit 1
+        ;;
+    esac
+done
+
+# Start up the service
+exec "$JAVA" $JAVA_OPTS $ES_JAVA_OPTS $es_parms -Des.path.home="$ES_HOME" -cp "$ES_CLASSPATH" $properties \
+                org.motovs.elasticsearch.snapshots.AbortedSnapshotCleaner
+
+exit $?

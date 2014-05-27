@@ -1,0 +1,5 @@
+# Update this file with your settings
+cluster.name: "elasticsearch-imotov"
+network.host: "127.0.0.1"
+discovery.zen.ping.multicast.enabled: false
+discovery.zen.ping.unicast.hosts: ["localhost:9300", "localhost:9301", "localhost:9302"]
