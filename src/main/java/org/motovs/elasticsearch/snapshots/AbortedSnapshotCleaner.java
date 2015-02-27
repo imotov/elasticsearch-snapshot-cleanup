@@ -58,7 +58,7 @@ public class AbortedSnapshotCleaner {
         ClusterState clusterState = clusterService.state();
         SnapshotMetaData snapshots = clusterState.getMetaData().custom(SnapshotMetaData.TYPE);
         if (snapshots == null || snapshots.entries().isEmpty()) {
-            logger.info("No snapshots found");
+            logger.info("No snapshots found, snapshots metadata is {}", snapshots == null ? "null" : "empty");
             return;
         }
 
@@ -73,6 +73,8 @@ public class AbortedSnapshotCleaner {
                     UpdateIndexShardSnapshotStatusRequest request = new UpdateIndexShardSnapshotStatusRequest(snapshotId, shard.getKey(), status);
                     transportService.sendRequest(clusterService.state().nodes().masterNode(),
                             "cluster/snapshot/update_snapshot", request, EmptyTransportResponseHandler.INSTANCE_SAME);
+                } else {
+                    logger.info("Ignoring shard [{}] with state [{}] on node [{}] - node exists : [{}]", shard.getKey(), shard.getValue().state(), nodeId, clusterState.nodes().get(nodeId) == null);
                 }
             }
         }
