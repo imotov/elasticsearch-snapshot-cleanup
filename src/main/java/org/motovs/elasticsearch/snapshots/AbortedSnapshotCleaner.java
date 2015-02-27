@@ -15,11 +15,10 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalNode;
-import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.snapshots.SnapshotsService;
 import org.elasticsearch.transport.*;
 
 import java.io.IOException;
-import java.util.Map;
 
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
@@ -72,9 +71,9 @@ public class AbortedSnapshotCleaner {
                     SnapshotMetaData.ShardSnapshotStatus status = new SnapshotMetaData.ShardSnapshotStatus(nodeId, SnapshotMetaData.State.FAILED, "Aborted");
                     UpdateIndexShardSnapshotStatusRequest request = new UpdateIndexShardSnapshotStatusRequest(snapshotId, shard.getKey(), status);
                     transportService.sendRequest(clusterService.state().nodes().masterNode(),
-                            "cluster/snapshot/update_snapshot", request, EmptyTransportResponseHandler.INSTANCE_SAME);
+                            SnapshotsService.UPDATE_SNAPSHOT_ACTION_NAME, request, EmptyTransportResponseHandler.INSTANCE_SAME);
                 } else {
-                    logger.info("Ignoring shard [{}] with state [{}] on node [{}] - node exists : [{}]", shard.getKey(), shard.getValue().state(), nodeId, clusterState.nodes().get(nodeId) == null);
+                    logger.info("Ignoring shard [{}] with state [{}] on node [{}] - node exists : [{}]", shard.getKey(), shard.getValue().state(), nodeId, clusterState.nodes().get(nodeId) != null);
                 }
             }
         }

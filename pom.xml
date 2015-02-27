@@ -6,7 +6,7 @@
 
     <groupId>org.motovs.elasticsearch.snapshots</groupId>
     <artifactId>elasticsearch-snapshot-cleanup</artifactId>
-    <version>1.4.4</version>
+    <version>1.4.4.1</version>
 
     <properties>
         <elasticsearch.version>1.4.4</elasticsearch.version>
