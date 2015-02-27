@@ -5,7 +5,9 @@ This utility cleans up snapshots stuck due to the [Issue 5968](https://github.co
 
 Usage:
 
-- Untar the [tar.gz file](https://www.dropbox.com/s/lcmj244ztzv67ds/elasticsearch-snapshot-cleanup-1.0-SNAPSHOT.tar.gz) into a temporary directory on a machine that has access to the cluster.
+- For the version 1.0.1 untar the [tar.gz file](https://www.dropbox.com/s/lcmj244ztzv67ds/elasticsearch-snapshot-cleanup-1.0-SNAPSHOT.tar.gz) into a temporary directory on a machine that has access to the cluster.
+- For the version 1.4.4 untar the [tar.gz file](https://www.dropbox.com/s/dyjomt456jh4jnj/elasticsearch-snapshot-cleanup-1.4.4.tar.gz) into a temporary directory on a machine that has access to the cluster.
+- For all other versions update pom.xml file and appropriate elasticsearch and lucene version, run `mvn clean package` and untar the file found in the `target/releases` directory.
 - Modify `config/elasticsearch.yml` file with cluster connection settings.
 - Execute the script `bin/cleanup`
 
