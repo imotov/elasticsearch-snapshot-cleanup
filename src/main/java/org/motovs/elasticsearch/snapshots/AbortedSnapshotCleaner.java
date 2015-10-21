@@ -1,6 +1,5 @@
 package org.motovs.elasticsearch.snapshots;
 
-import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.SnapshotId;
@@ -12,6 +11,7 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.logging.log4j.LogConfigurator;
 import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalNode;
@@ -28,7 +28,7 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 public class AbortedSnapshotCleaner {
 
     public static void main(String[] args) {
-        AbortedSnapshotCleaner cleaner = new AbortedSnapshotCleaner();
+        AbortedSnapshotCleaner cleaner = new AbortedSnapshotCleaner(ImmutableSettings.EMPTY);
         try {
             cleaner.cleanSnapshots();
         } finally {
@@ -42,10 +42,15 @@ public class AbortedSnapshotCleaner {
 
     private ESLogger logger;
 
-    public AbortedSnapshotCleaner() {
-        LogConfigurator.configure(ImmutableSettings.EMPTY);
-        logger = Loggers.getLogger(getClass(), ImmutableSettings.EMPTY);
-        node = nodeBuilder().client(true).node();
+    public AbortedSnapshotCleaner(Settings settings) {
+        this(nodeBuilder().client(true).node(), settings);
+    }
+
+    // For testing
+    public AbortedSnapshotCleaner(Node node, Settings settings) {
+        LogConfigurator.configure(settings);
+        logger = Loggers.getLogger(getClass(), settings);
+        this.node = node;
     }
 
     public void cleanSnapshots() {
@@ -64,6 +69,7 @@ public class AbortedSnapshotCleaner {
         for (SnapshotMetaData.Entry entry : snapshots.entries()) {
             SnapshotId snapshotId = entry.snapshotId();
             logger.info("Processing snapshot [{}]", snapshotId);
+            boolean updated = false;
             for (ImmutableMap.Entry<ShardId, SnapshotMetaData.ShardSnapshotStatus> shard : entry.shards().entrySet()) {
                 String nodeId = shard.getValue().nodeId();
                 if (shard.getValue().state() == SnapshotMetaData.State.ABORTED && clusterState.nodes().get(nodeId) == null) {
@@ -72,9 +78,17 @@ public class AbortedSnapshotCleaner {
                     UpdateIndexShardSnapshotStatusRequest request = new UpdateIndexShardSnapshotStatusRequest(snapshotId, shard.getKey(), status);
                     transportService.sendRequest(clusterService.state().nodes().masterNode(),
                             SnapshotsService.UPDATE_SNAPSHOT_ACTION_NAME, request, EmptyTransportResponseHandler.INSTANCE_SAME);
+                    updated = true;
                 } else {
                     logger.info("Ignoring shard [{}] with state [{}] on node [{}] - node exists : [{}]", shard.getKey(), shard.getValue().state(), nodeId, clusterState.nodes().get(nodeId) != null);
                 }
+            }
+            if (updated == false) {
+                // Hmm, nothing was found - try to push it by adding fake aborted shard
+                SnapshotMetaData.ShardSnapshotStatus status = new SnapshotMetaData.ShardSnapshotStatus("fake-node", SnapshotMetaData.State.FAILED, "Aborted");
+                UpdateIndexShardSnapshotStatusRequest request = new UpdateIndexShardSnapshotStatusRequest(snapshotId, new ShardId("fake-index", 0), status);
+                transportService.sendRequest(clusterService.state().nodes().masterNode(),
+                        SnapshotsService.UPDATE_SNAPSHOT_ACTION_NAME, request, EmptyTransportResponseHandler.INSTANCE_SAME);
             }
         }
     }
