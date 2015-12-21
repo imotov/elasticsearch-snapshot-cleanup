@@ -9,7 +9,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRes
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
-import org.elasticsearch.cluster.ProcessedClusterStateNonMasterUpdateTask;
+import org.elasticsearch.cluster.ProcessedClusterStateUpdateTask;
 import org.elasticsearch.cluster.metadata.MetaData;
 import org.elasticsearch.cluster.metadata.SnapshotId;
 import org.elasticsearch.cluster.metadata.SnapshotMetaData;
@@ -54,8 +54,9 @@ public class StuckCompletedSnapshotTest extends ElasticsearchIntegrationTest {
         logger.info("--> create stuck snapshot");
         final CountDownLatch latch = new CountDownLatch(1);
         final SnapshotId snapshotId = new SnapshotId("test-repo", "test-snap-1");
-        ClusterService masterClusterService = internalCluster().getInstance(ClusterService.class, internalCluster().getMasterName());
-        masterClusterService.submitStateUpdateTask("create stuck snapshot", new ProcessedClusterStateNonMasterUpdateTask() {
+        String masterName = client().admin().cluster().prepareState().execute().actionGet().getState().nodes().masterNode().name();
+        ClusterService masterClusterService = internalCluster().getInstance(ClusterService.class, masterName);
+        masterClusterService.submitStateUpdateTask("create stuck snapshot", new ProcessedClusterStateUpdateTask() {
             @Override
             public void clusterStateProcessed(String s, ClusterState clusterState, ClusterState clusterState1) {
                 latch.countDown();

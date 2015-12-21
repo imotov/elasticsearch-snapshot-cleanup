@@ -6,11 +6,11 @@
 
     <groupId>org.motovs.elasticsearch.snapshots</groupId>
     <artifactId>elasticsearch-snapshot-cleanup</artifactId>
-    <version>1.4.4.2</version>
+    <version>1.3.4.1</version>
 
     <properties>
-        <elasticsearch.version>1.4.4</elasticsearch.version>
-        <lucene.version>4.10.3</lucene.version>
+        <elasticsearch.version>1.3.4</elasticsearch.version>
+        <lucene.version>4.9.1</lucene.version>
     </properties>
 
     <dependencies>
